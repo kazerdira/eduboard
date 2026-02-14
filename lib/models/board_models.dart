@@ -82,6 +82,11 @@ abstract class BoardObject {
   /// The center of the object's bounding box.
   Offset get center => getBounds().center;
 
+  /// Creates a deep copy of this object.
+  /// Unlike toJson()/fromJson(), this is efficient and doesn't allocate
+  /// large temporary strings (e.g., base64 for images).
+  BoardObject clone();
+
   factory BoardObject.fromJson(Map<String, dynamic> json) {
     switch (json['type'] as String) {
       case 'stroke':
@@ -183,6 +188,18 @@ class StrokeObject extends BoardObject {
         rotation: (json['rotation'] as num?)?.toDouble() ?? 0.0,
         timestamp: json['timestamp'] as int?,
       );
+
+  @override
+  StrokeObject clone() => StrokeObject(
+        id: id,
+        points: points.map((p) => PointData(p.x, p.y, p.pressure)).toList(),
+        color: color,
+        strokeWidth: strokeWidth,
+        isHighlighter: isHighlighter,
+        opacity: opacity,
+        rotation: rotation,
+        timestamp: timestamp,
+      );
 }
 
 // ============================================================
@@ -246,6 +263,14 @@ class EraserObject extends BoardObject {
             .toList(),
         strokeWidth: (json['strokeWidth'] as num).toDouble(),
         timestamp: json['timestamp'] as int?,
+      );
+
+  @override
+  EraserObject clone() => EraserObject(
+        id: id,
+        points: points.map((p) => PointData(p.x, p.y, p.pressure)).toList(),
+        strokeWidth: strokeWidth,
+        timestamp: timestamp,
       );
 }
 
@@ -314,6 +339,18 @@ class LineObject extends BoardObject {
         rotation: (json['rotation'] as num?)?.toDouble() ?? 0.0,
         timestamp: json['timestamp'] as int?,
       );
+
+  @override
+  LineObject clone() => LineObject(
+        id: id,
+        start: start,
+        end: end,
+        color: color,
+        strokeWidth: strokeWidth,
+        opacity: opacity,
+        rotation: rotation,
+        timestamp: timestamp,
+      );
 }
 
 // ============================================================
@@ -380,6 +417,18 @@ class ArrowObject extends BoardObject {
         opacity: (json['opacity'] as num?)?.toDouble() ?? 1.0,
         rotation: (json['rotation'] as num?)?.toDouble() ?? 0.0,
         timestamp: json['timestamp'] as int?,
+      );
+
+  @override
+  ArrowObject clone() => ArrowObject(
+        id: id,
+        start: start,
+        end: end,
+        color: color,
+        strokeWidth: strokeWidth,
+        opacity: opacity,
+        rotation: rotation,
+        timestamp: timestamp,
       );
 }
 
@@ -456,6 +505,19 @@ class ShapeObject extends BoardObject {
         rotation: (json['rotation'] as num?)?.toDouble() ?? 0.0,
         timestamp: json['timestamp'] as int?,
       );
+
+  @override
+  ShapeObject clone() => ShapeObject(
+        id: id,
+        rect: rect,
+        shapeType: shapeType,
+        color: color,
+        strokeWidth: strokeWidth,
+        filled: filled,
+        opacity: opacity,
+        rotation: rotation,
+        timestamp: timestamp,
+      );
 }
 
 // ============================================================
@@ -530,6 +592,19 @@ class TextObject extends BoardObject {
         rotation: (json['rotation'] as num?)?.toDouble() ?? 0.0,
         timestamp: json['timestamp'] as int?,
       );
+
+  @override
+  TextObject clone() => TextObject(
+        id: id,
+        position: position,
+        text: text,
+        color: color,
+        fontSize: fontSize,
+        fontFamily: fontFamily,
+        opacity: opacity,
+        rotation: rotation,
+        timestamp: timestamp,
+      );
 }
 
 // ============================================================
@@ -601,6 +676,19 @@ class ImageObject extends BoardObject {
       timestamp: json['timestamp'] as int?,
     );
   }
+
+  @override
+  ImageObject clone() => ImageObject(
+        id: id,
+        position: position,
+        size: size,
+        imageUrl: imageUrl,
+        // Share reference to imageBytes - it's immutable data, no need to copy
+        imageBytes: imageBytes,
+        opacity: opacity,
+        rotation: rotation,
+        timestamp: timestamp,
+      );
 }
 
 // ============================================================
@@ -665,6 +753,17 @@ class RulerObject extends BoardObject {
         strokeWidth: (json['strokeWidth'] as num?)?.toDouble() ?? 2,
         opacity: (json['opacity'] as num?)?.toDouble() ?? 1.0,
         timestamp: json['timestamp'] as int?,
+      );
+
+  @override
+  RulerObject clone() => RulerObject(
+        id: id,
+        start: start,
+        end: end,
+        color: color,
+        strokeWidth: strokeWidth,
+        opacity: opacity,
+        timestamp: timestamp,
       );
 }
 

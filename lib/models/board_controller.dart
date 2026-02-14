@@ -921,6 +921,38 @@ class BoardController extends ChangeNotifier {
     return jsonEncode(_pages.map((p) => p.toJson()).toList());
   }
 
+  /// Import board state from JSON (restores all pages and objects).
+  /// Clears current state and replaces with imported data.
+  void importFromJson(String json) {
+    final List<dynamic> pagesData = jsonDecode(json) as List<dynamic>;
+    _pages.clear();
+    _pageHistory.clear();
+    _pageHistoryIndex.clear();
+
+    for (final pageData in pagesData) {
+      final pageMap = pageData as Map<String, dynamic>;
+      final pageId = pageMap['id'] as String;
+      final objectsData = pageMap['objects'] as List<dynamic>;
+      final objects = objectsData
+          .map((o) => BoardObject.fromJson(o as Map<String, dynamic>))
+          .toList();
+      _pages.add(BoardPage(id: pageId, objects: objects));
+      _pageHistory[pageId] = [_cloneObjects(objects)];
+      _pageHistoryIndex[pageId] = 0;
+    }
+
+    // Ensure at least one page exists
+    if (_pages.isEmpty) {
+      final defaultPage = BoardPage(id: _generateId());
+      _pages.add(defaultPage);
+      _pageHistory[defaultPage.id] = [[]];
+      _pageHistoryIndex[defaultPage.id] = 0;
+    }
+
+    _currentPageIndex = 0;
+    notifyListeners();
+  }
+
   // === Remote sync (LiveKit) ===
   void applyRemoteOperation(Map<String, dynamic> operation) {
     final action = operation['action'] as String;
@@ -990,7 +1022,7 @@ class BoardController extends ChangeNotifier {
   }
 
   List<BoardObject> _cloneObjects(List<BoardObject> objects) {
-    return objects.map((o) => BoardObject.fromJson(o.toJson())).toList();
+    return objects.map((o) => o.clone()).toList();
   }
 
   static int _idCounter = 0;

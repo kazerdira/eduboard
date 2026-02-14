@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' show pi;
 import 'dart:typed_data';
+import 'dart:ui' show PointerDeviceKind;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -62,6 +63,10 @@ class _EduBoardState extends State<EduBoard> with TickerProviderStateMixin {
   Timer? _longPressTimer;
   Offset? _longPressOrigin;
   static const _longPressDuration = Duration(milliseconds: 400);
+
+  // Palm rejection: track active pointer to ignore palm touches
+  int? _activePointer;
+  static const double _palmRadiusThreshold = 25.0; // pixels
 
   // Canvas virtual size
   static const double _canvasSize = 10000.0;
@@ -301,8 +306,38 @@ class _EduBoardState extends State<EduBoard> with TickerProviderStateMixin {
   // POINTER EVENTS
   // ============================================================
 
+  /// Returns true if this pointer event should be rejected as a palm touch.
+  /// Stylus events are never rejected. Touch events with large contact radius
+  /// (indicating palm) are rejected.
+  bool _isPalmTouch(PointerEvent event) {
+    // Stylus is always allowed
+    if (event.kind == PointerDeviceKind.stylus ||
+        event.kind == PointerDeviceKind.invertedStylus) {
+      return false;
+    }
+    // Mouse is always allowed
+    if (event.kind == PointerDeviceKind.mouse) {
+      return false;
+    }
+    // Touch: reject if radiusMajor is large (palm)
+    if (event.radiusMajor > _palmRadiusThreshold) {
+      return true;
+    }
+    return false;
+  }
+
   void _onPointerDown(PointerDownEvent event) {
     if (_vpConstraints == null) return;
+
+    // Palm rejection: ignore large touch contacts
+    if (_isPalmTouch(event)) return;
+
+    // Track the active pointer (first touch wins)
+    if (_activePointer != null && _activePointer != event.pointer) {
+      return; // Ignore additional touches while drawing
+    }
+    _activePointer = event.pointer;
+
     final pos = _toCanvas(event.localPosition);
     final pressure = event.pressure;
 
@@ -369,6 +404,10 @@ class _EduBoardState extends State<EduBoard> with TickerProviderStateMixin {
     if (_isMultiTouch) return;
     if (_vpConstraints == null) return;
 
+    // Palm rejection: ignore if not our active pointer
+    if (_activePointer != null && event.pointer != _activePointer) return;
+    if (_isPalmTouch(event)) return;
+
     final pos = _toCanvas(event.localPosition);
     final pressure = event.pressure;
 
@@ -411,6 +450,11 @@ class _EduBoardState extends State<EduBoard> with TickerProviderStateMixin {
   }
 
   void _onPointerUp(PointerUpEvent event) {
+    // Clear active pointer tracking
+    if (event.pointer == _activePointer) {
+      _activePointer = null;
+    }
+
     switch (ctrl.activeTool) {
       case BoardToolType.pen:
       case BoardToolType.highlighter:

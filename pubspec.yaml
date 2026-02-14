@@ -1,0 +1,28 @@
+name: edu_board
+description: Interactive whiteboard widget for educational platforms. Designed for LiveKit real-time sync.
+version: 1.0.0
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+  flutter: '>=3.16.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # Optional but recommended:
+  # perfect_freehand: ^2.3.0        # Better stroke rendering (replace our built-in algorithm)
+  # livekit_client: ^2.1.0           # LiveKit Flutter SDK
+  # image_picker: ^1.0.0             # For image insertion
+  # file_picker: ^6.0.0              # Alternative file picker
+  # share_plus: ^7.0.0               # For exporting/sharing
+  # path_provider: ^2.1.0            # Local file storage
+  # flutter_colorpicker: ^1.0.3      # Custom color picker (optional upgrade)
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true

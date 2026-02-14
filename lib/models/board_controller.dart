@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'board_models.dart';
 
 /// Which part of the selection box is being interacted with.
@@ -63,8 +64,37 @@ class BoardController extends ChangeNotifier {
   Offset? _marqueeEnd;
   Offset? _multiDragStart;
 
-  // === Laser ===
-  List<Offset> _laserPoints = [];
+  // === Laser (ring buffer for efficiency) ===
+  static const int _laserBufferSize = 60;
+  final List<Offset> _laserBuffer = List.filled(_laserBufferSize, Offset.zero);
+  int _laserHead = 0; // write position
+  int _laserCount = 0; // number of valid points
+
+  /// Returns laser points in order (oldest to newest).
+  List<Offset> get laserPoints {
+    if (_laserCount == 0) return const [];
+    final result = <Offset>[];
+    final start =
+        _laserCount < _laserBufferSize ? 0 : _laserHead; // start from oldest
+    for (int i = 0; i < _laserCount; i++) {
+      result.add(_laserBuffer[(start + i) % _laserBufferSize]);
+    }
+    return result;
+  }
+
+  // === Frame-batched notifyListeners ===
+  bool _notifyScheduled = false;
+
+  /// Schedules a notifyListeners call for the next frame.
+  /// Multiple calls within the same frame are batched into one.
+  void _scheduleNotify() {
+    if (_notifyScheduled) return;
+    _notifyScheduled = true;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _notifyScheduled = false;
+      notifyListeners();
+    });
+  }
 
   // === LiveKit sync callback ===
   OnBoardOperation? onOperation;
@@ -90,7 +120,7 @@ class BoardController extends ChangeNotifier {
   Offset? get shapeCurrentPoint => _shapeCurrentPoint;
   int? get selectedObjectIndex => _selectedObjectIndex;
   SelectionHandle get activeHandle => _activeHandle;
-  List<Offset> get laserPoints => _laserPoints;
+  // laserPoints getter defined above with ring buffer
 
   BoardObject? get selectedObject {
     if (_selectedObjectIndex == null) return null;
@@ -279,7 +309,7 @@ class BoardController extends ChangeNotifier {
 
   void addStrokePoint(Offset point, {double pressure = 0.5}) {
     _currentStrokePoints?.add(PointData(point.dx, point.dy, pressure));
-    notifyListeners();
+    _scheduleNotify(); // batched notify for smooth drawing
   }
 
   void endStroke() {
@@ -364,7 +394,7 @@ class BoardController extends ChangeNotifier {
 
   void updateShape(Offset point) {
     _shapeCurrentPoint = point;
-    notifyListeners();
+    _scheduleNotify(); // batched notify for smooth shape preview
   }
 
   void endShape() {
@@ -851,13 +881,15 @@ class BoardController extends ChangeNotifier {
 
   // === Laser ===
   void addLaserPoint(Offset point) {
-    _laserPoints.add(point);
-    if (_laserPoints.length > 60) _laserPoints.removeAt(0);
-    notifyListeners();
+    _laserBuffer[_laserHead] = point;
+    _laserHead = (_laserHead + 1) % _laserBufferSize;
+    if (_laserCount < _laserBufferSize) _laserCount++;
+    _scheduleNotify(); // batched notify for high-frequency updates
   }
 
   void clearLaser() {
-    _laserPoints.clear();
+    _laserCount = 0;
+    _laserHead = 0;
     notifyListeners();
   }
 
